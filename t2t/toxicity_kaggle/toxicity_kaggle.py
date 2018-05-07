@@ -49,6 +49,11 @@ class ToxicityKaggle(text_problems.Text2ClassProblem):
   def num_classes(self):
     return 2
 
+  @property
+  def approx_vocab_size(self):
+    """Approximate vocab size to generate. Only for VocabType.SUBWORD."""
+    return 2**12  # ~4k
+
   def class_labels(self, data_dir):
     del data_dir
     return ['0', '1']
