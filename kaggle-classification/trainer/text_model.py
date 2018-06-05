@@ -56,9 +56,8 @@ def main(FLAGS):
 
   # Export a saved model
   feature_spec = {
-    # TODO: what is shape?  why can't i use var length?
-    # note using a shape of greater than 1 causes errors when invoked by
-    # the analyzer
+    # TODO: it isn't quite clear why this needs to be a FixedLenFeature
+    # rather than VarLenFeature.
     'sentence': tf.FixedLenFeature(dtype=tf.string, shape=1)
   }
   serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec)

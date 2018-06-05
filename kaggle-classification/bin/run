@@ -8,7 +8,7 @@
 #
 # To run with hyperparameter tuning, enter:
 # './bin/run -c hparam_config.yaml'
-#
+# 
 #
 # Setup Steps:
 # 1. Install the gcloud SDK
@@ -22,25 +22,25 @@ CONFIG=gpu_config.yaml
 JOB_NAME=${USER}_kaggle_training
 # Note: this must be compatible with cells that have GPUs. us-central1 works.
 # See: https://cloud.google.com/ml-engine/docs/using-gpus
-REGION=us-east1
+REGION=us-central1
 DATE=`date '+%Y%m%d_%H%M%S'`
 OUTPUT_PATH=gs://${BUCKET_NAME}/models/${USER}/${DATE}
 
 while getopts :c:h opt; do
 case ${opt} in
-h)
+h) 
     echo "Usage: run [-c config_filename.yaml]"
     echo "Flags: "
     echo -e " -c Specify a config file (e.g. use hparam_config to enable hyperparameter tuning)"
     exit 0;;
-c)
+c) 
     echo "Using custom config ${OPTARG}"
     CONFIG=${OPTARG};;
 :)
     echo "Error: ${OPTARG} requires an argument."
     echo "Use 'run -h' for help."
     exit 1;;
-\?)
+\?) 
     echo "Invalid flag. Use 'run -h' for help."
     exit 1;;
 esac
@@ -50,15 +50,20 @@ done
 echo "Writing to $OUTPUT_PATH"
 
 # Remote
-# TODO: change runtime to 1.7 here rather than in the setup.py?
 gcloud ml-engine jobs submit training ${JOB_NAME}_${DATE} \
     --job-dir ${OUTPUT_PATH} \
     --runtime-version 1.4 \
     --config ${CONFIG} \
-    --module-name trainer.text_model \
+    --module-name trainer.model \
     --package-path trainer/ \
     --region $REGION \
-    --verbosity debug
+    --verbosity debug \
+    -- \
+    --train_data gs://${BUCKET_NAME}/train.csv \
+    --y_class toxic \
+    --train_steps 5000 \
+    --saved_model_dir gs://${BUCKET_NAME}/saved_graph/${USER}/${DATE} \
+    --model cnn
 
 
 echo "You can view the tensorboard for this job with the command:"
