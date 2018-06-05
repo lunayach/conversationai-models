@@ -2,9 +2,9 @@ import argparse
 import tensorflow as tf
 import tensorflow_hub as hub
 import numpy as np
-#import os
+import os
 import pandas as pd
-#import re
+import re
 
 # Shows how to create a TF Estimator that takes in an unparsed string
 # (as opposed to a vector or ints, etc), using tf.text_embedding_column
@@ -15,7 +15,7 @@ def main(FLAGS):
   #  'sentence': a variable length string, e.g. 'This movie was terrible!'
   #  'polarity': an int, 0 for negative reviews, 1 for positive reviews
   # Any other columns returned should be ignored
-  train_df, test_df = get_hardcoded_data()
+  train_df, test_df = download_and_load_datasets()
 
   # Estimator input functions
   train_input_fn = tf.estimator.inputs.pandas_input_fn(
@@ -27,7 +27,11 @@ def main(FLAGS):
 
   """### Feature columns
 
-  TF-Hub provides a [feature column](https://github.com/tensorflow/hub/blob/master/docs/api_docs/python/hub/text_embedding_column.md) that applies a module on the given text feature and passes further the outputs of the module. In this tutorial we will be using the [nnlm-en-dim128 module](https://tfhub.dev/google/nnlm-en-dim128/1). For the purpose of this tutorial, the most important facts are:
+  TF-Hub provides a [feature column](https://github.com/tensorflow/hub/blob/master/docs/api_docs/python/hub/text_embedding_column.md)
+  that applies a module on the given text feature and passes further the outputs of the module.
+  In this tutorial we will be using the [nnlm-en-dim128 module](https://tfhub.dev/google/nnlm-en-dim128/1)
+
+  For the purpose of this tutorial, the most important facts are:
 
   * The module takes **a batch of sentences in a 1-D tensor of strings** as input.
   * The module is responsible for **preprocessing of sentences** (e.g. removal of punctuation and splitting on spaces).
@@ -53,19 +57,17 @@ def main(FLAGS):
   # Export a saved model
   feature_spec = {
     # TODO: what is shape?  why can't i use var length?
+    # note using a shape of greater than 1 causes errors when invoked by
+    # the analyzer
     'sentence': tf.FixedLenFeature(dtype=tf.string, shape=1)
   }
   serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec)
   saved_model_dir = estimator.export_savedmodel(FLAGS.job_dir, serving_input_fn)
   print('export_savedmodel wrote to %s' % saved_model_dir)
 
-# end of main
 
-
-
-# Download and process the dataset files.
-# TODO: use this!
-def download_and_load_datasets(force_download=False):
+# Download and process the dataset files
+def download_and_load_datasets():
   # Load all files from a directory in a DataFrame.
   def load_directory_data(directory):
     data = {}
@@ -94,18 +96,6 @@ def download_and_load_datasets(force_download=False):
   test_df = load_dataset(os.path.join(os.path.dirname(dataset),
                                       "aclImdb", "test"))
   return train_df, test_df
-
-
-def get_hardcoded_data():
-  train = {
-    'sentence': ['this is something good', 'and this is something bad'],
-    'polarity': [1, 0],
-  }
-  test = {
-    'sentence': ['here is something else good', 'here is something else bad'],
-    'polarity': [1, 0],
-  }
-  return pd.DataFrame.from_dict(train), pd.DataFrame.from_dict(test)
 
 
 if __name__ == '__main__':

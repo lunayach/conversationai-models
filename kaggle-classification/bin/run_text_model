@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# TODO: improve comments
+#
+# A script to train the text model and write the model.
+#
+# To run with default hyperparameters from the kaggle-classification directory just enter:
+# './bin/run'
+# Setup Steps:
+# 1. Install the gcloud SDK
+# 2. Authenticate with the GCP project you want to use, `gcloud config set project [my-project]`
+#
+
+# Edit these!
+BUCKET_NAME=kaggle-model-experiments
+CONFIG=gpu_config.yaml
+JOB_NAME=${USER}_kaggle_training
+# Note: this must be compatible with cells that have GPUs. us-central1 works.
+# See: https://cloud.google.com/ml-engine/docs/using-gpus
+REGION=us-east1
+DATE=`date '+%Y%m%d_%H%M%S'`
+OUTPUT_PATH=gs://${BUCKET_NAME}/models/${USER}/${DATE}
+
+echo "Writing to $OUTPUT_PATH"
+
+# Remote
+gcloud ml-engine jobs submit training ${JOB_NAME}_${DATE} \
+    --job-dir ${OUTPUT_PATH} \
+    --runtime-version 1.4 \
+    --config ${CONFIG} \
+    --module-name trainer.text_model \
+    --package-path trainer/ \
+    --region $REGION \
+    --verbosity debug
+
+echo "You can view the tensorboard for this job with the command:"
+echo ""
+echo -e "\t tensorboard --logdir=${OUTPUT_PATH}"
+echo ""
+echo "And on your browser navigate to:"
+echo ""
+echo -e "\t http://localhost:6006/#scalars"
+echo ""
+echo "This will populate after a model checkpoint is saved."
+echo ""
