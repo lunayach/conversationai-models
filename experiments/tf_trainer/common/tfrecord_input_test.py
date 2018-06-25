@@ -40,13 +40,19 @@ class TFRecordInputTest(tf.test.TestCase):
         train_path=None,
         validate_path=None,
         text_feature="comment",
-        labels={"label": tf.float32},
+        labels={
+            "label": tf.float32,
+            "missing_label": tf.float32
+        },
         feature_preprocessor=preprocessor)
 
     with self.test_session():
       features, labels = dataset_input._read_tf_example(ex_tensor)
       self.assertEqual(list(features["comment"].eval()), [12, 13, 999])
+      self.assertEqual(labels["label_weight"].eval(), 1)
       self.assertAlmostEqual(labels["label"].eval(), 0.8)
+      self.assertEqual(labels["missing_label_weight"].eval(), 0)
+      self.assertAlmostEqual(labels["missing_label"].eval(), 0.0)
 
 
 if __name__ == "__main__":

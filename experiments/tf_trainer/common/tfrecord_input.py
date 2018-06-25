@@ -53,6 +53,7 @@ class TFRecordInput(dataset_input.DatasetInput):
                 # TODO: truncate to max_seq_length
                 self._text_feature: [None]
             },
+            {label: [] for label in self._labels},
             {label: [] for label in self._labels}))
 
     itr = batched_dataset.make_one_shot_iterator().get_next()
@@ -68,7 +69,7 @@ class TFRecordInput(dataset_input.DatasetInput):
     keys_to_features = {}
     keys_to_features[self._text_feature] = tf.FixedLenFeature([], tf.string)
     for label, dtype in self._labels.items():
-      keys_to_features[label] = tf.FixedLenFeature([], dtype)
+      keys_to_features[label] = tf.VarLenFeature(dtype)
     parsed = tf.parse_single_example(
         record, keys_to_features)  # type: Dict[str, types.Tensor]
 
@@ -76,6 +77,16 @@ class TFRecordInput(dataset_input.DatasetInput):
     # I think this could be a feature column, but feature columns seem so beta.
     preprocessed_text = self._feature_preprocessor(text)
     features = {self._text_feature: preprocessed_text}
-    labels = {label: parsed[label] for label in self._labels}
+    labels = {
+        label: tf.cond(
+            tf.size(parsed[label].values) > 0,
+            lambda: tf.sparse_tensor_to_dense(parsed[label]), lambda: 0.0)
+        for label in self._labels
+    }
+    weights = {
+        label + "_weight": tf.to_int32(tf.size(parsed[label].values) > 0)
+        for label in self._labels
+    }
+    labels = {**labels, **weights}
 
     return features, labels
