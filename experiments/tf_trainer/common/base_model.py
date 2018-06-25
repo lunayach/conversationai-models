@@ -23,6 +23,7 @@ class BaseModel(abc.ABC):
   @staticmethod
   def create(
       estimator_fn: Callable[[str], tf.estimator.Estimator]) -> 'BaseModel':
+    """Static constructor for BaseModel subclass."""
 
     class Model(BaseModel):
 
