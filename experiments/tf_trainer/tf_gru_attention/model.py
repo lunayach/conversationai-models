@@ -112,6 +112,7 @@ class TFRNNModel(base_model.BaseModel):
         tf.contrib.estimator.binary_classification_head(name=name)
         for name in self._target_labels
     ]
+    output_weights = [labels[name + '_weight'] for name in self._target_labels]
     multihead = tf.contrib.estimator.multi_head(output_heads)
 
     optimizer = tf.train.AdamOptimizer(learning_rate=params.learning_rate)

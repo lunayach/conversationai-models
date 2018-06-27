@@ -36,7 +36,11 @@ tf.app.flags.DEFINE_integer("eval_steps", 100,
 # TODO: Missing fields are not handled properly yet.
 LABELS = {
     "frac_neg": tf.float32,
-    "frac_very_neg": tf.float32
+    "frac_very_neg": tf.float32,
+    "insult": tf.float32,
+    "threat": tf.float32,
+    "obscene": tf.float32,
+    "identity_hate": tf.float32
 }  # type: Dict[str, tf.DType]
 
 

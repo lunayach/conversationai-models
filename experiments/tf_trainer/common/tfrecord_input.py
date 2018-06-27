@@ -46,6 +46,10 @@ class TFRecordInput(dataset_input.DatasetInput):
     dataset = tf.data.TFRecordDataset(filepath)  # type: tf.data.TFRecordDataset
 
     parsed_dataset = dataset.map(self._read_tf_example)
+    label_shapes = {
+        **{label: [] for label in self._labels},
+        **{label + "_weight": [] for label in self._labels}
+    }
     batched_dataset = parsed_dataset.padded_batch(
         self._batch_size,
         padded_shapes=(
@@ -53,8 +57,7 @@ class TFRecordInput(dataset_input.DatasetInput):
                 # TODO: truncate to max_seq_length
                 self._text_feature: [None]
             },
-            {label: [] for label in self._labels},
-            {label: [] for label in self._labels}))
+            label_shapes))
 
     itr = batched_dataset.make_one_shot_iterator().get_next()
     return itr
@@ -80,8 +83,8 @@ class TFRecordInput(dataset_input.DatasetInput):
     labels = {
         label: tf.cond(
             tf.size(parsed[label].values) > 0,
-            lambda: tf.sparse_tensor_to_dense(parsed[label]), lambda: 0.0)
-        for label in self._labels
+            lambda: tf.squeeze(tf.sparse_tensor_to_dense(parsed[label])),
+            lambda: 0.0) for label in self._labels
     }
     weights = {
         label + "_weight": tf.to_int32(tf.size(parsed[label].values) > 0)
