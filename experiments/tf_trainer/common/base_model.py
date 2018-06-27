@@ -35,3 +35,6 @@ class BaseModel(abc.ABC):
   @abc.abstractmethod
   def estimator(self, model_dir: str) -> tf.estimator.Estimator:
     pass
+
+  def hparams(self) -> tf.contrib.training.HParams:
+    return tf.contrib.training.HParams()
