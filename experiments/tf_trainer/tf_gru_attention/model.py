@@ -109,8 +109,8 @@ class TFRNNModel(base_model.BaseModel):
         inputs=logits, units=len(self._target_labels), activation=None)
 
     output_heads = [
-        tf.contrib.estimator.binary_classification_head(name=name)
-        for name in self._target_labels
+        tf.contrib.estimator.binary_classification_head(
+            name=name, thresholds=[0.5]) for name in self._target_labels
     ]
     multihead = tf.contrib.estimator.multi_head(output_heads)
 
