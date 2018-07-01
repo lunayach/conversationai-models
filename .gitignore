@@ -5,11 +5,11 @@
 *.pyc
 
 # Virtual Environment files.
-.pyenv
-.virtualenv
+.pyenv/
+.virtualenv/
 
 # mypy cache files for type-checking.
-.mypy_cache
+.mypy_cache/
 
 # Bazel
 bazel-bin
@@ -17,3 +17,9 @@ bazel-experiments
 bazel-genfiles
 bazel-out
 bazel-testlogs
+
+# Local configuration
+convai_config.py
+
+# Local model output files
+local_data/

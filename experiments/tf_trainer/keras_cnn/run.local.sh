@@ -1,7 +1,8 @@
 #!/bin/bash
 
-GCS_RESOURCES="gs://kaggle-model-experiments/resources"
-MODEL_DIR="keras_cnn_local_model_dir"
+# GCS_RESOURCES="gs://kaggle-model-experiments/resources"
+GCS_RESOURCES="local_data/resources"
+MODEL_DIR="local_data/models_dir/keras_cnn"
 
 echo "You can view the tensorboard for this job with the command:"
 echo ""

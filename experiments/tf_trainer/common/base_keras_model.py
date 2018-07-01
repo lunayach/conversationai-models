@@ -53,6 +53,9 @@ class BaseKerasModel(base_model.BaseModel):
     return tf.estimator.Estimator(
         new_model_fn, config=new_config, params=estimator.params)
 
+  # TODO: move this outside of the class; it has nothing to do with the class.
+  # This is a generic utility metric for Keras written in tensorflow. Move to
+  # its own file, maybe `metrics.py`
   @staticmethod
   def roc_auc(y_true: types.Tensor, y_pred: types.Tensor,
               threshold=0.5) -> types.Tensor:

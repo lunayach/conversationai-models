@@ -21,6 +21,7 @@ from tf_trainer.common import tfrecord_input
 from tf_trainer.common import text_preprocessor
 from tf_trainer.common import types
 from tf_trainer.common import base_model
+from tf_trainer import convai_config
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -30,12 +31,12 @@ tf.app.flags.DEFINE_string('validate_path', None,
                            'Path to the validation data TFRecord file.')
 tf.app.flags.DEFINE_string('model_dir', None,
                            "Directory for the Estimator's model directory.")
-tf.app.flags.DEFINE_string('comet_key_file', None,
-                           'Path to file containing comet.ml api key.')
+tf.app.flags.DEFINE_string('comet_api_key', None,
+                           'String value of comet.ml key. Overrides config.')
 tf.app.flags.DEFINE_string('comet_team_name', None,
-                           'Name of comet team that tracks results.')
+                           'Name of comet team that tracks results. Overrides config.')
 tf.app.flags.DEFINE_string('comet_project_name', None,
-                           'Name of comet project that tracks results.')
+                           'Name of comet project that tracks results. Overrides config.')
 
 tf.app.flags.mark_flag_as_required('train_path')
 tf.app.flags.mark_flag_as_required('validate_path')
@@ -63,9 +64,7 @@ class ModelTrainer():
       eval_period: the number of steps between evaluations.
       eval_steps: the number of batches that are evaluated per evaulation.
     """
-    experiment = None
-    if FLAGS.comet_key_file is not None:
-      experiment = self._setup_comet()
+    experiment = self._setup_comet()
     num_itr = int(steps / eval_period)
 
     for _ in range(num_itr):
@@ -79,12 +78,18 @@ class ModelTrainer():
       tf.logging.info(metrics)
 
   def _setup_comet(self):
-    with tf.gfile.GFile(FLAGS.comet_key_file) as key_file:
-      key = key_file.read().rstrip()
+    if FLAGS.comet_api_key is not None:
+      convai_config.comet_api_key = FLAGS.comet_api_key
+    if FLAGS.comet_project_name is not None:
+      convai_config.comet_project_name = FLAGS.comet_project_name
+    if FLAGS.comet_team_name is not None:
+      convai_config.comet_team_name = FLAGS.comet_team_name
+    if not convai_config.comet_api_key:
+      return None
     experiment = comet_ml.Experiment(
-        api_key=key,
-        project_name=FLAGS.comet_project_name,
-        team_name=FLAGS.comet_team_name,
+        api_key=convai_config.comet_api_key,
+        project_name=convai_config.comet_project_name,
+        team_name=convai_config.comet_team_name,
         auto_param_logging=False,
         parse_args=False)
     experiment.log_parameter('train_path', FLAGS.train_path)

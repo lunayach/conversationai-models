@@ -19,7 +19,7 @@ Engine](https://cloud.google.com/ml-engine/) and track experiments with
 Install [Bazel](https://docs.bazel.build/versions/master/install-os-x.html);
 this is the build tool we use to run tests, etc.
 
-### Python Dependencies
+### Python Dependencies and Setup
 
 Install library dependencies (it is optional, but recommended to install these
 in a [Virtual Environment](https://docs.python.org/3/tutorial/venv.html):
@@ -32,6 +32,10 @@ in a [Virtual Environment](https://docs.python.org/3/tutorial/venv.html):
     # Install dependencies
     pip install -r requirements.txt
 
+    # Create the config template
+    cp config.template.py config.py
+    # ... now set the relevant vars your 'config.py'; see below ...
+
     # ... do stuff ...
 
     # Exist your virtual environment.
@@ -40,12 +44,25 @@ in a [Virtual Environment](https://docs.python.org/3/tutorial/venv.html):
 
 ### Cloud and ML Engine configuration
 
-TODO(nthain)
+You must set your Google cloud project config to the project that you will be
+training on, and which has read/write access to the cloud storage bucket you are
+using to store data and results.
 
-### Commet.ML configuration
+```shell
+# Set your project
+gcloud config set project `<you project name>`
+# Authenticate with Google Cloud
+gcloud auth login
+```
 
-TODO(nthain)
+Your project must also have enabled the Google Cloud ML Engine APIs, as well as
+Google Cloud Storage.
 
+### Comet.ML configuration
+
+If you have a [Comet ML](https://www.comet.ml/) key, you can use that platform
+to track experiments and monitor your model training progress and quality.
+Simply add your api key in the `config.py` file.
 
 ## Training an Existing Model
 
@@ -61,10 +78,12 @@ data in `tf.record` format. See
 [`tools/convert_csv_to_tfrecord.py`](https://github.com/conversationai/conversationai-models/blob/master/experiments/tools/convert_csv_to_tfrecord.py)
 for a simple CSV to `tf.record` converter.
 
-If you have a [Comet ML](https://www.comet.ml/) key, you can use that platform
-to monitor your model training progress and quality. Simply add your api key to
-the file `comet_api_key.txt` in this directory.
+Once training has been started, you can look at the status of training with
+Tensorboard on your local machine:
 
+```shell
+tensorboard --logdir='<path to logs directory; can be GCS path>'
+```
 
 ## Evaluate an Existing Model on New Data
 
