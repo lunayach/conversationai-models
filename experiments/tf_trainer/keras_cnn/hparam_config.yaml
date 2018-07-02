@@ -2,13 +2,13 @@ trainingInput:
   pythonVersion: '3.5'
   ## BASIC_GPU uses single NVIDIA Tesla K80 GPU.
   ## See: https://cloud.google.com/ml-engine/docs/tensorflow/using-gpus
-  scaleTier: BASIC_GPU
-  # scaleTier: CUSTOM
-  # masterType: standard_p100
-  # workerType: standard_p100
-  # parameterServerType: large_model
-  # workerCount: 1
-  # parameterServerCount: 3
+  # scaleTier: BASIC_GPU
+  scaleTier: CUSTOM
+  masterType: standard_p100
+  workerType: standard_p100
+  parameterServerType: large_model
+  workerCount: 3
+  parameterServerCount: 1
   # Hyper parameter search specification:
   hyperparameters:
     goal: MAXIMIZE
@@ -18,36 +18,24 @@ trainingInput:
     enableTrialEarlyStopping: TRUE
     params:
       - parameterName: learning_rate
-        type: DOUBLE
-        minValue: 0.00001
-        maxValue: 0.01
-        scaleType: UNIT_LOG_SCALE
+        type: DISCRETE
+        discreteValues:
+        - 0.01
+        - 0.001
+        - 0.0001
       - parameterName: dropout_fraction
-        type: DOUBLE
-        categoricalValues:
-        - 0
+        type: DISCRETE
+        discreteValues:
         - 0.1
-        - 0.2
-        - 0.3
       - parameterName: batch_size
         type: DISCRETE
         discreteValues:
         - 512
-      - parameterName: filter_sizes
+      - parameterName: cnn_shape
         type: CATEGORICAL
         categoricalValues:
-        - '2,3,4,5,6'
-      - parameterName: num_filters
-        type: INTEGER
-        minValue: 64
-        maxValue: 512
+        - '(2/2 -> 100), (3/2 -> 100) : (6/2 -> 100) : (3/1 -> 100)'
       - parameterName: dense_units
         type: CATEGORICAL
         categoricalValues:
-        - '128'
-        - '128,128'
-        - '256'
-        - '512'
-        - '512,256'
         - '1024'
-        - '1024,512'

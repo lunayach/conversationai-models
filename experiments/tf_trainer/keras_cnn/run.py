@@ -24,7 +24,8 @@ tf.app.flags.DEFINE_string("embeddings_path",
                            "Path to the embeddings file.")
 tf.app.flags.DEFINE_string("text_feature_name", "comment_text",
                            "Feature name of the text feature.")
-tf.app.flags.DEFINE_integer("batch_size", 64,
+# TODO: move batch size to trainer.
+tf.app.flags.DEFINE_integer("batch_size", 512,
                             "The batch size to use during training.")
 tf.app.flags.DEFINE_integer("train_steps", 5000,
                             "The number of steps to train for.")
