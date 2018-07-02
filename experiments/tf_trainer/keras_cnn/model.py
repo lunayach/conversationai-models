@@ -78,10 +78,13 @@ class KerasCNNModel(base_keras_model.BaseKerasModel):
     X = I # type: types.Tensor
     concurrent_filters = [X]
     for l in self.cnn_layers_spec.layers:
-      X = layers.concatenate(concurrent_filters)
+      if len(concurrent_filters) > 1:
+        X = layers.concatenate(concurrent_filters)
+      else:
+        X = X[0]
       concurrent_filters = []
       for f in l.filters: # type: cnn_spec_parser.Filter
-        conv_filter = layers.Conv1D(f.num_filters, f.size, f.stride,
+        conv_filter = layers.Conv1D(f.num_filters, f.size, stride=f.stride,
             activation='relu', padding='same')(X)
         concurrent_filters.append(conv_filter)
 
