@@ -1,3 +1,17 @@
+# coding=utf-8
+# Copyright 2018 The Conversation-AI.github.io Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Text Preprocessor."""
 
 from __future__ import absolute_import
@@ -7,33 +21,31 @@ from __future__ import print_function
 from absl import app
 from absl import flags
 
-import nltk
 import numpy as np
 import functools
 import tensorflow as tf
 from tf_trainer.common import types
 from tf_trainer.common import base_model
+from tf_trainer.common.token_embedding_index import LoadTokenIdxEmbeddings
 from typing import Tuple, Dict, Optional, List, Callable
-
-FLAGS = flags.FLAGS
 
 
 class TextPreprocessor():
-  """Text Preprocessor.
+  """Text Preprocessor TensorFlow Estimator Extension.
 
-  Takes an embedding and uses it to produce a word to index mapping and an
-  embedding matrix.
+  Uses embedding indexes to create tensors that map tokens (provided by an
+  abstract tokenizer funtion) to embeddings.
 
   NOTE: You might be wondering why we don't go straight from the word to the
-  embedding. The (maybe incorrect) thought process is that
-  the embedding portion can be made a part of the tensorflow graph whereas the
-  word to index portion can not (since words have variable length). Future work
-  may include fixing a max word length.
+  embedding. The (maybe incorrect) thought process is that the embedding portion
+  can be made a part of the tensorflow graph whereas the word to index portion
+  can not (since words have variable length). Future work may include fixing a
+  max word length.
   """
 
   def __init__(self, embeddings_path: str) -> None:
-    self._word_to_idx, self._embeddings_matrix, self._unknown_token = TextPreprocessor._get_word_idx_and_embeddings(
-        embeddings_path)  # type: Tuple[Dict[str, int], np.ndarray, int]
+    self._word_to_idx, self._embeddings_matrix, self._unknown_token = (
+      LoadTokenIdxEmbeddings(embeddings_path))  # type: Tuple[Dict[str, int], np.ndarray, int]
 
   def tokenize_tensor_op(self, tokenizer: Callable[[str], List[str]]
                         ) -> Callable[[types.Tensor], types.Tensor]:
@@ -129,47 +141,3 @@ class TextPreprocessor():
         initializer=initial_embeddings_matrix,
         trainable=trainable)
     return embeddings
-
-  @staticmethod
-  def _get_word_idx_and_embeddings(embeddings_path: str,
-                                   max_words: Optional[int] = None
-                                  ) -> Tuple[Dict[str, int], np.ndarray, int]:
-    """Generate word to idx mapping and word embeddings numpy array.
-
-    We have two levels of indirection (e.g. word to idx and then idx to
-    embedding) which could reduce embedding size if multiple words map to the
-    same idx. This is not currently a use case.
-
-    Args:
-      embeddings_path: Local, GCS, or HDFS path to embedding file. Each line
-        should be a word and its vector representation separated by a space.
-      max_words: The max number of words we are going to allow as part of the
-        embedding.
-
-    Returns:
-      Tuple of vocab list, Numpy array of word embeddings with shape
-      (vocab size, embedding size), and the unknown token.
-    """
-    word_to_idx = {}
-    word_embeddings = []
-    with tf.gfile.Open(embeddings_path) as f:
-      for idx, line in enumerate(f):
-        if max_words and idx >= max_words:
-          break
-
-        values = line.split()
-        word = values[0]
-        word_embedding = np.asarray(values[1:], dtype='float32')
-        word_to_idx[word] = idx + 1  # Reserve first row for padding
-        word_embeddings.append(word_embedding)
-
-    # Add the padding "embedding"
-    word_embeddings.insert(0, np.random.randn(len(word_embeddings[0])))
-
-    # Convert embedding to numpy array and append the unknown word embedding,
-    # which is the mean of all other embeddings.
-    unknown_token = len(word_embeddings)
-    embeddings_matrix = np.asarray(word_embeddings, dtype=np.float32)
-    embeddings_matrix = np.append(
-        embeddings_matrix, [embeddings_matrix.mean(axis=0)], axis=0)
-    return word_to_idx, embeddings_matrix, unknown_token
