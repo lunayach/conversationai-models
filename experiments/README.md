@@ -38,7 +38,7 @@ in a [Virtual Environment](https://docs.python.org/3/tutorial/venv.html):
 
     # ... do stuff ...
 
-    # Exist your virtual environment.
+    # Exit your virtual environment.
     deactivate
     ```
 
