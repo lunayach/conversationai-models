@@ -49,27 +49,35 @@ def run(items, raters, classes, counts, label, pseudo_count, tol=1, max_iter=25,
     logging.info('Iter\tlog-likelihood\tdelta-CM\tdelta-Y_hat')
 
     while not converged:
+        logging.info('iteration: %s', iteration)
         iteration += 1
         start_iter = time.time()
 
         # M-step - updated error rates and class marginals given new
         #          distribution over true item classes
+        logging.info('1')
         old_item_classes = item_classes
+        logging.info('2')
 
         (class_marginals, error_rates) = m_step(counts, item_classes, pseudo_count)
+        logging.info('3')
 
         # E-step - calculate expected item classes given error rates and
         #          class marginals
         item_classes = e_step_verbose(counts, class_marginals, error_rates)
+        logging.info('4')
 
         # check likelihood
         log_L = calc_likelihood(counts, class_marginals, error_rates)
+        logging.info('5')
 
         # calculate the number of seconds the last iteration took
         iter_time = time.time() - start_iter
+        logging.info('6')
 
         # check for convergence
         if old_class_marginals is not None:
+            logging.info('7')
             class_marginals_diff = np.sum(np.abs(class_marginals - old_class_marginals))
             item_class_diff = np.sum(np.abs(item_classes - old_item_classes))
 
@@ -80,9 +88,11 @@ def run(items, raters, classes, counts, label, pseudo_count, tol=1, max_iter=25,
                or iteration > max_iter:
                 converged = True
         else:
+            logging.info('8')
             logging.info('{0}\t{1:.1f}'.format(iteration, log_L))
 
         # update current values
+        logging.info('9')
         old_class_marginals = class_marginals
         old_error_rates = error_rates
 
@@ -112,6 +122,8 @@ def initialize(counts):
       item_classes: matrix of estimates of true item classes:
           [items x responses]
     """
+    logging.info('counts: %s', counts)
+
     [nItems, nRaters, nClasses] = np.shape(counts)
 
     # sum over raters
@@ -148,6 +160,7 @@ def m_step(counts, item_classes, psuedo_count):
     [nItems, nRaters, nClasses] = np.shape(counts)
 
     # compute class marginals
+    logging.info('item_classes %s', item_classes)
     class_marginals = np.sum(item_classes, axis=0)/float(nItems)
 
     # compute error rates for each rater, each predicted class
@@ -167,6 +180,7 @@ def m_step(counts, item_classes, psuedo_count):
     sum_over_responses[sum_over_responses==0] = 1
 
     error_rates = np.divide(error_rates, sum_over_responses)
+    logging.info('error_rates: %s', error_rates)
 
     return (class_marginals, error_rates)
 
@@ -274,14 +288,21 @@ def e_step_verbose(counts, class_marginals, error_rates):
 
     item_classes = np.zeros([nItems, nClasses])
 
+    logging.info('class_marginals: %s', class_marginals)
+
     for i in range(nItems):
         for j in range(nClasses):
+            if class_marginals[j] == 0:
+              logging.info('class_marginals[j] == 0')
+            if (error_rates[:,j,:] == 0).any():
+              logging.info('error_rates[:,j,:]: %s', error_rates[:,j,:])
             estimate = class_marginals[j]
             estimate *= np.prod(np.power(error_rates[:,j,:], counts[i,:,:]))
             item_classes[i,j] = estimate
 
     # normalize error rates by dividing by the sum over all classes
     item_sum = np.sum(item_classes, axis=1, keepdims=True)
+    logging.info('item_sum: %s', item_sum)
     item_classes = np.divide(item_classes, np.tile(item_sum, (1, nClasses)))
 
     return item_classes
@@ -317,6 +338,8 @@ def calc_likelihood(counts, class_marginals, error_rates):
         temp = log_L + np.log(item_likelihood)
 
         if np.isnan(temp) or np.isinf(temp):
+            logging.info('i is %s', i)
+            logging.info('counts[i,:,:]: %s', counts[i,:,:])
             logging.info("{0}, {1}, {2}".format(i, log_L, np.log(item_likelihood), temp))
             sys.exit()
 
@@ -488,6 +511,14 @@ def main(FLAGS):
     unit_id = FLAGS.unit_id_col
     worker_id = FLAGS.worker_id_col
     df = load_data(FLAGS.data_path, unit_id, worker_id, label)[0:n_examples]
+
+    query_str = ''
+    ids = [1312207014,1359629662,1359631123,1359630748,1359631203,1359629908,1359629377,1359630400,1359631236,1359632342,1359631145,1359629322,1359630974,1359629602,1359629197]
+    for i, id in enumerate(ids):
+        query_str += 'comment_id!=' + str(id)
+        if i < len(ids) - 1:
+            query_str += ' & '
+    df = df.query(query_str)
 
     logging.info('Running on {0} examples for label {1}'.format(len(df), label))
 
