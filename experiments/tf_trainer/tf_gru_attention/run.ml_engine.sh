@@ -22,6 +22,15 @@ if [ "$1" == "civil_comments" ]; then
     valid_path="${GCS_RESOURCES}/civil_comments_data/train_eval_test/eval-*.tfrecord"
     labels="toxicity"
     label_dtypes="float"
+    train_steps=250000
+    eval_period=800
+    eval_steps=50
+    learning_rate=0.00043202873559206826
+    dropout_rate=0.45286591704272644
+    gru_units="128"
+    attention_units=64
+    dense_units="128"
+    batch_size=32
 
 elif [ "$1" == "toxicity" ]; then
 
@@ -29,6 +38,15 @@ elif [ "$1" == "toxicity" ]; then
     valid_path="${GCS_RESOURCES}/toxicity_q42017_validate.tfrecord"
     labels="frac_neg"
     label_dtypes="float"
+    train_steps=110000
+    eval_period=800
+    eval_steps=50
+    learning_rate=0.00067158439070251973
+    dropout_rate=0.0030912176559074966
+    gru_units="128"
+    attention_units=32
+    dense_units="64"
+    batch_size=64
 
 elif [ "$1" == "many_communities" ]; then
 
@@ -36,6 +54,15 @@ elif [ "$1" == "many_communities" ]; then
     valid_path="${GCS_RESOURCES}/transfer_learning_data/many_communities/20181105_validate.tfrecord"
     labels="removed"
     label_dtypes="int"
+    train_steps=10000000
+    eval_period=800
+    eval_steps=50
+    learning_rate=0.00036793562485846982
+    dropout_rate=0.60134625061009983
+    gru_units="128"
+    attention_units=32
+    dense_units="64,64"
+    batch_size=16
 
 else
     echo "First positional arg must be one of civil_comments, toxicity, many_communities."
@@ -63,4 +90,13 @@ gcloud ml-engine jobs submit training tf_trainer_${MODEL_NAME_DATA}_${USER}_${DA
     --model_dir="${JOB_DIR}/model_dir" \
     --labels=$labels \
     --label_dtypes=$label_dtypes \
-    --preprocess_in_tf=False
+    --train_steps=$train_steps \
+    --eval_period=$eval_period \
+    --eval_steps=$eval_steps \
+    --preprocess_in_tf=False \
+    --learning_rate=$learning_rate \
+    --dropout_rate=$dropout_rate \
+    --gru_units=$gru_units \
+    --attention_units=$attention_units \
+    --dense_units=$dense_units \
+    --batch_size=$batch_size
