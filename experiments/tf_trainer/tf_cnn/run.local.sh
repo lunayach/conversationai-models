@@ -8,4 +8,7 @@ python -m tf_trainer.tf_cnn.run \
   --embeddings_path="${GCS_RESOURCES}/glove.6B/glove.6B.100d.txt" \
   --model_dir="tf_cnn_local_model_dir" \
   --labels=$labels \
-  --label_dtypes=$label_dtypes
+  --label_dtypes=$label_dtypes \
+  --train_steps=100 \
+  --eval_steps=10 \
+  --eval_period=20

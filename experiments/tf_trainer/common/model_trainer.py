@@ -49,9 +49,10 @@ tf.app.flags.DEFINE_string('model_dir', None,
 tf.app.flags.DEFINE_bool('enable_profiling', False,
                          'Enable profiler hook in estimator.')
 tf.app.flags.DEFINE_integer(
-    'n_export', 1, 'Number of models to export.'
-    'If =1, only the last one is saved.'
-    'If >1, we split the take n_export checkpoints.')
+    'n_export', -1, 'Number of models to export.'
+    'If =-1, only the best checkpoint (wrt eval loss) is saved/exported.'
+    'If =1, only the last checkpoint is saved/exported.'
+    'If >1, we save/export `n_export` evenly-spaced checkpoints.')
 tf.app.flags.DEFINE_string('key_name', 'comment_key',
                            'Name of a pass-thru integer id for batch scoring.')
 
@@ -191,8 +192,12 @@ class ModelTrainer(object):
     self._model = model
     self._estimator = model.estimator(self._model_dir())
 
-  def train_with_eval(self):
-    """Train with periodic evaluation."""
+  def train_with_eval(self, serving_input_receiver_fn=None, example_key_name=None):
+    """Train with periodic evaluation.
+    """
+    if example_key_name:
+      self._estimator = self._add_estimator_key(self._estimator, example_key_name)
+
     training_hooks = None
     if FLAGS.enable_profiling:
       training_hooks = [
@@ -205,9 +210,28 @@ class ModelTrainer(object):
         input_fn=self._dataset.train_input_fn,
         max_steps=FLAGS.train_steps,
         hooks=training_hooks)
+
+    exporter = None
+    if FLAGS.n_export == -1:
+      if not serving_input_receiver_fn:
+        raise ValueError(
+          'If using BestExporter, must pass valid `serving_input_receiver_fn`.')
+      exporter = tf.estimator.BestExporter(
+        name="best_exporter",
+        serving_input_receiver_fn=serving_input_receiver_fn,
+        exports_to_keep=1)
+    elif FLAGS.n_export == 1:
+      if not serving_input_receiver_fn:
+        raise ValueError(
+          'If using FinalExporter, must pass valid `serving_input_receiver_fn`.')
+        exporter = tf.estimator.FinalExporter(
+          name="final_exporter",
+          serving_input_receiver_fn=serving_input_receiver_fn)
+
     eval_spec = tf.estimator.EvalSpec(
         input_fn=self._dataset.validate_input_fn,
         steps=FLAGS.eval_steps,
+        exporters=exporter,
         throttle_secs=1)
     self._estimator._config = self._estimator.config.replace(
         save_checkpoints_steps=FLAGS.eval_period)
@@ -233,7 +257,91 @@ class ModelTrainer(object):
     estimator = forward_features(estimator, example_key_name)
     return estimator
 
-  def _get_list_checkpoint(self, n_export, model_dir):
+
+  def _get_best_step_from_event_file(self, event_file, metrics_key,
+    is_first_metric_better_fn):
+    """Find, in `event_file`, the step corresponding to the best metric.
+
+    Args:
+      event_file: The event file where to find the metrics.
+      metrics_key: The metric by which to determine the best checkpoint to save.
+      is_first_metric_better_fn: Comparison function to find best metric. Takes
+          in as arguments two numbers, returns true if first is better than
+          second. Default function says larger is better. Default value works for
+          AUC: higher is better.
+    
+    Returns:
+      Best step (int).
+    """
+    best_metric = None
+    best_step = None
+    for e in tf.train.summary_iterator(event_file):
+      for v in e.summary.value:
+        if v.tag == metrics_key:
+          metric = v.simple_value
+          if not best_step or is_first_metric_better_fn(metric, best_metric):
+            best_metric = metric
+            best_step = e.step
+    return best_step
+
+
+  def _get_best_checkpoint(self, checkpoints, metrics_key,
+    is_first_metric_better_fn):
+    """Find the best checkpoint, according to `metrics_key`.
+
+    Args:
+      checkpoints: List of model checkpoints.
+      metrics_key: The metric by which to determine the best checkpoint to save.
+      is_first_metric_better_fn: Comparison function to find best metric. Takes
+          in as arguments two numbers, returns true if first is better than
+          second. Default function says larger is better. Default value works for
+          AUC: higher is better.
+
+    Returns:
+      Best checkpoint path.
+    """
+    eval_event_dir = self._estimator.eval_dir()
+
+    event_files = file_io.list_directory(eval_event_dir)
+    if not event_files:
+      raise ValueError('No event files found in directory %s.' % eval_event_dir)
+    if len(event_files) > 1:
+      print('Multiple event files found in dir %s. Using last one.' % eval_event_dir)
+    
+    event_file = os.path.join(eval_event_dir, event_files[-1])
+
+    # Use the best step to find the best checkpoint.
+    best_step = self._get_best_step_from_event_file(event_file, metrics_key,
+      is_first_metric_better_fn)
+    
+    # If we couldn't find metrics_key in the event file, try again using loss.
+    if best_step is None:
+      print("Metrics key %s not found in metrics, using 'loss' as metric key." %
+            metrics_key)
+      metrics_key = "loss"
+      # Want the checkpoint with the lowest loss
+      is_first_metric_better_fn = lambda x, y: x < y
+
+      best_step = self._get_best_step_from_event_file(event_file, metrics_key,
+        is_first_metric_better_fn)
+
+    if best_step is None:
+      raise ValueError("Couldn't find 'loss' metric in event file %s." % event_file)
+
+    best_checkpoint_path = None
+    for checkpoint_path in checkpoints:
+      version = int(checkpoint_path.split('-')[-1])
+      if version == best_step:
+        best_checkpoint_path = checkpoint_path
+
+    if not best_checkpoint_path:
+      raise ValueError("Couldn't find checkpoint for best_step = %d." % best_step)
+
+    return best_checkpoint_path
+
+
+  def _get_list_checkpoint(self, n_export, model_dir, metrics_key=None,
+    is_first_metric_better_fn=None):
     """Get the checkpoints that we want to export.
 
     Args:
@@ -249,7 +357,6 @@ class ModelTrainer(object):
     Then we choose n_export number of checkpoints such as their steps are as
     equidistant as possible.
     """
-
     checkpoints = file_io.get_matching_files(
         os.path.join(model_dir, 'model.ckpt-*.index'))
     checkpoints = [x.replace('.index', '') for x in checkpoints]
@@ -271,6 +378,7 @@ class ModelTrainer(object):
 
     return checkpoints_to_export
 
+
   def export(self, serving_input_fn, example_key_name=None):
     """Export model as a .pb.
 
@@ -287,13 +395,19 @@ class ModelTrainer(object):
       example includes an example_key field that is passed along by the estimator
       and returned in the predictions.
     """
+    if FLAGS.n_export == -1:
+      print('Best model was already exported in train_with_eval(), skipping export().')
+      return
+    elif FLAGS.n_export == 1:
+      print('Final model was already exported in train_with_eval(), skipping export().')
+      return
+
     estimator = self._estimator
     if example_key_name:
       estimator = self._add_estimator_key(self._estimator, example_key_name)
     
     checkpoints_to_export = self._get_list_checkpoint(FLAGS.n_export,
                                                       self._model_dir())
-
     for checkpoint_path in checkpoints_to_export:
       version = checkpoint_path.split('-')[-1]
       estimator.export_savedmodel(
