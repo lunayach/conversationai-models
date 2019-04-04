@@ -15,6 +15,7 @@ nltk==3.4
 numpy==1.16.1
 pandas==0.24.1
 protobuf==3.6.1
+pytype==2019.4.2.1
 PyYAML==4.2b1
 requests==2.21.0
 scipy==1.2.1
