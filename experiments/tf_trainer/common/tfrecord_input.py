@@ -26,7 +26,7 @@ tf.app.flags.DEFINE_string('text_feature', 'comment_text',
                            'Name of feature containing text input.')
 tf.app.flags.DEFINE_boolean('round_labels', True,
                             'Round label features to 0 or 1 if true.')
-tf.app.flags.DEFINE_integer('batch_size', 256,
+tf.app.flags.DEFINE_integer('batch_size', 32,
                             'Batch sizes to use when reading.')
 tf.app.flags.DEFINE_integer(
   'num_prefetch', 5,
@@ -213,3 +213,70 @@ class TFRecordInputWithTokenizer(TFRecordInput):
         'sequence_length': tf.shape(tokens)[0],
     }
     return self._process_labels(features, parsed)
+
+class BERTReader(dataset_input.DatasetInput):
+  """TFRecord based DatasetInput specifically for BERT.
+
+  Handles parsing of TF Examples.
+  """
+
+  def __init__(self, seq_length: int = 256) -> None:
+    self._batch_size = FLAGS.batch_size
+    self._num_prefetch = FLAGS.num_prefetch
+    self._seq_length = seq_length
+
+  def train_input_fn(self) -> tf.data.TFRecordDataset:
+    """input_fn for TF Estimators for training set.
+
+    Automatically repeats over input data forever. We define epoch limits in the
+    model trainer.
+    """
+    assert FLAGS.train_path
+    return self._input_fn_from_file(FLAGS.train_path).repeat()
+
+  def validate_input_fn(self) -> tf.data.TFRecordDataset:
+    """input_fn for TF Estimators for validation set."""
+    assert FLAGS.validate_path
+    return self._input_fn_from_file(FLAGS.validate_path)
+
+  def _input_fn_from_file(self, filepath: str) -> tf.data.TFRecordDataset:
+    filenames_dataset = tf.data.Dataset.list_files(filepath)
+    dataset = tf.data.TFRecordDataset(
+        filenames_dataset)  # type: tf.data.TFRecordDataset
+    parsed_dataset = dataset.map(
+        self._read_tf_example, num_parallel_calls=multiprocessing.cpu_count())
+    return parsed_dataset.batch(self._batch_size).prefetch(self._num_prefetch)
+
+  def _decode_record(self, record, name_to_features):
+    """Decodes a record to a TensorFlow example."""
+    example = tf.parse_single_example(record, name_to_features)
+
+    # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
+    # So cast all int64 to int32.
+    for name in list(example.keys()):
+      t = example[name]
+      if t.dtype == tf.int64:
+        t = tf.to_int32(t)
+      example[name] = t
+
+    return example
+
+  def _read_tf_example(
+      self,
+      record: tf.Tensor,
+  ) -> types.FeatureAndLabelTensors:
+    """Parses TF Example protobuf into a text feature and labels.
+
+    The input TF Example has a text feature as a singleton list with the full
+    comment as the single element.
+    """
+
+    names_to_features = {
+      "input_ids": tf.FixedLenFeature([self._seq_length], tf.int64),
+      "input_mask": tf.FixedLenFeature([self._seq_length], tf.int64),
+      "segment_ids": tf.FixedLenFeature([self._seq_length], tf.int64),
+      "label_ids": tf.FixedLenFeature([], tf.int64),
+      "is_real_example": tf.FixedLenFeature([], tf.int64),
+    }
+
+    return self._decode_record(record, names_to_features)

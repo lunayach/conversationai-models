@@ -58,12 +58,12 @@ tf.app.flags.DEFINE_string('key_name', 'comment_key',
 
 tf.app.flags.DEFINE_integer('train_steps', 100000,
                             'The number of steps to train for.')
-tf.app.flags.DEFINE_integer('eval_period', 1000,
+tf.app.flags.DEFINE_integer('eval_period', 100,
                             'The number of steps per eval period.')
 tf.app.flags.DEFINE_integer('eval_steps', None,
                             'Number of examples to eval for, default all.')
 
-tf.app.flags.mark_flag_as_required('model_dir')
+#tf.app.flags.mark_flag_as_required('model_dir')
 
 
 # This function extends tf.contrib.estimator.forward_features.
