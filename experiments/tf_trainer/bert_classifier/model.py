@@ -1,4 +1,5 @@
 """Tensorflow Estimator using TF Hub universal sentence encoder."""
+#TODO(nthain): Maybe import os and manually set the cache file
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,7 +20,7 @@ tf.app.flags.DEFINE_float('dropout_rate', 0.15,
                           'The dropout rate to use during training.')
 tf.app.flags.DEFINE_string(
     'model_spec',
-    'https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1',
+    'gs://conversationai-models/resources/tfhub/bert_uncased_L-12_H-768_A-12-1/5a395eafef2a37bd9fc55d7f6ae676d2a134a838',
     'The url of the TF Hub sentence encoding module to use.')
 # TODO: Wire flag in 
 tf.app.flags.DEFINE_bool('trainable', False,

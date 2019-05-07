@@ -41,6 +41,6 @@ gcloud ml-engine jobs submit training tf_trainer_${MODEL_NAME_DATA}_${USER}_${DA
     --train_steps=$train_steps \
     --eval_period=$eval_period \
     --eval_steps=$eval_steps \
-    --model_spec="https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1" \
+    --model_spec="gs://conversationai-models/resources/tfhub/bert_uncased_L-12_H-768_A-12-1/5a395eafef2a37bd9fc55d7f6ae676d2a134a838" \
     --n_export=1
 
