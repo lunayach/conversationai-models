@@ -58,20 +58,22 @@ class BERTClassifierModel(base_model.BaseModel):
         inputs=bert_inputs,
         signature="tokens",
         as_dict=True)
+    
 
     # Use "pooled_output" for classification tasks on an entire sentence.
     # Use "sequence_outputs" for token-level output.
     output_layer = bert_outputs["pooled_output"]
-
+    tf.logging.log(tf.logging.INFO, '****output_layer shape: %s' % output_layer.get_shape())
     hidden_size = output_layer.shape[-1].value
 
     # Create our own layer to tune for politeness data.
     output_weights = tf.get_variable(
         "output_weights", [num_labels, hidden_size],
         initializer=tf.truncated_normal_initializer(stddev=0.02))
-
+    tf.logging.log(tf.logging.INFO, '****output_weights shape: %s' % output_weights.get_shape())
     output_bias = tf.get_variable(
         "output_bias", [num_labels], initializer=tf.zeros_initializer())
+    tf.logging.log(tf.logging.INFO, '****output_bias shape: %s' % output_bias.get_shape())
 
     with tf.variable_scope("loss"):
       # Dropout helps prevent overfitting
@@ -79,12 +81,14 @@ class BERTClassifierModel(base_model.BaseModel):
 
       logits = tf.matmul(output_layer, output_weights, transpose_b=True)
       logits = tf.nn.bias_add(logits, output_bias)
+      tf.logging.log(tf.logging.INFO, '****logits shape: %s' % logits.get_shape())
       log_probs = tf.nn.log_softmax(logits, axis=-1)
 
       # Convert labels into one-hot encoding
       one_hot_labels = tf.one_hot(labels, depth=num_labels, dtype=tf.float32)
-
+      tf.logging.log(tf.logging.INFO, '****one_hot_labels shape: %s' % one_hot_labels.get_shape())
       predicted_labels = tf.squeeze(tf.argmax(log_probs, axis=-1, output_type=tf.int32))
+      tf.logging.log(tf.logging.INFO, '****predicted_labels shape: %s' % predicted_labels.get_shape())
       # If we're predicting, we want predicted labels and the probabiltiies.
       if is_predicting:
         return (predicted_labels, log_probs)

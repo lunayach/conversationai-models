@@ -18,6 +18,7 @@ FLAGS = tf.app.flags.FLAGS
 
 def main(argv):
   del argv  # unused
+  tf.logging.log(tf.logging.INFO, '**INFO**: Hi, Testing the logging here.')
   dataset = tfrecord_input.BERTReader()
   model = bert_classifier.BERTClassifierModel()
 

@@ -12,9 +12,9 @@ if [ "$1" == "civil_comments" ]; then
     batch_size=128
     dropout_rate=0.12298246947263007
     learning_rate=0.0001473127671008433
-    train_steps=1000
-    eval_period=10
-    eval_steps=20
+    train_steps=50000
+    eval_period=1000
+    eval_steps=2000
     config="tf_trainer/common/p100_config.yaml"
 
 else
@@ -25,7 +25,7 @@ fi
 
 gcloud ml-engine jobs submit training tf_trainer_${MODEL_NAME_DATA}_${USER}_${DATETIME} \
     --job-dir=${JOB_DIR} \
-    --runtime-version=1.10 \
+    --runtime-version=1.12 \
     --config $config \
     --module-name="tf_trainer.${MODEL_NAME}.run" \
     --package-path=tf_trainer \
